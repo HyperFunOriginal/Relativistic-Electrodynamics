@@ -1,0 +1,180 @@
+#include "EMHelper.hlsl"
+#pragma kernel DiffrCalcE
+#pragma kernel DiffrCalcB
+#pragma kernel UpdateCrFl
+#pragma kernel UpdateEPhi
+#pragma kernel UpdateBPsi
+#pragma kernel Sommerfeld
+#pragma kernel Initialize
+#pragma kernel PrintImage
+#pragma kernel AddVtField
+
+// Derivatives; cached for sommerfeld radiation
+RWStructuredBuffer<float3x3> dE;
+RWStructuredBuffer<float3x3> dB;
+
+// Field
+RWStructuredBuffer<float3> E;
+RWStructuredBuffer<float> phi;
+
+// Pseudo-momenta
+RWStructuredBuffer<float3> B;
+RWStructuredBuffer<float> psi;
+
+// Currents
+RWStructuredBuffer<float4> Ja;
+
+float dampCoeff;
+float time;
+
+float RingSDF(float3 position, float rad)
+{
+    float3 closestPos = float3(0, normalize(position.yz + .0001));
+    return distance(closestPos * rad, position);
+}
+float CylinderSDF(float3 position, float len, float rad)
+{
+    float3 closestPos = float3(clamp(position.x, -len * .5, len * .5), normalize(position.yz + .001) * rad);
+    float3 closestPos2 = float3(position.x < 0 ? -len * .5 : len * .5, position.yz * rad / max(length(position.yz), rad));
+    return min(distance(closestPos, position), distance(closestPos2, position));
+}
+
+// Calculate differential of E; D_i E^j
+[numthreads(10,10,10)]
+void DiffrCalcE(uint3 id : SV_DispatchThreadID)
+{
+    dE[IdxEx(id)] = Grad(E, id);
+}
+
+// Calculate differential of B; D_i B^j
+[numthreads(10,10,10)]
+void DiffrCalcB(uint3 id : SV_DispatchThreadID)
+{
+    dB[IdxEx(id)] = Grad(B, id);
+}
+
+// Update 4-current density, J^mu
+[numthreads(10, 10, 10)]
+void UpdateCrFl(uint3 id : SV_DispatchThreadID)
+{
+    // Temporary; Preset 4-current density
+    
+    float3 position = YieldPosition(id);
+    float phase = sin(time * .05) * 1.3;
+    float3x3 transformation = float3x3(cos(phase), sin(phase), 0, -sin(phase), cos(phase), 0, 0, 0, 1);
+    
+    float dst = CylinderSDF(mul(transformation, position), 20, 7);
+    Ja[IdxEx(id)] = float4(cross(.1 * transformation[0], position) * exp(-dst * dst * .5), 0);
+}
+
+// Evolve Field
+[numthreads(10,10,10)]
+void UpdateEPhi (uint3 id : SV_DispatchThreadID)
+{
+    E[IdxEx(id)] += KreissOliger(E, id) * .2 * timestep;
+
+    if (Border(id))
+        return;
+    
+    float3x3 delB = dB[Idx(id)];
+    E[IdxEx(id)] += (Curl(delB) - Grad(psi, id) - Ja[Idx(id)].xyz) * timestep;
+    phi[IdxEx(id)] -= Div(delB) * timestep;
+    
+    phi[IdxEx(id)] *= exp(-dampCoeff * timestep);
+}
+
+// Evolve Pseudo-momenta
+[numthreads(10,10,10)]
+void UpdateBPsi (uint3 id : SV_DispatchThreadID)
+{
+    B[IdxEx(id)] += KreissOliger(B, id) * .2 * timestep;
+    
+    if (Border(id))
+        return;
+    
+    float3x3 delE = dE[Idx(id)];
+    B[IdxEx(id)] -= (Curl(delE) + Grad(phi, id)) * timestep;
+    psi[IdxEx(id)] -= (Div(delE) - Ja[Idx(id)].w) * timestep;
+    
+    psi[IdxEx(id)] *= exp(-dampCoeff * timestep);
+}
+
+// Sommerfeld Radiation Condition
+[numthreads(10,10,10)]
+void Sommerfeld (uint3 id : SV_DispatchThreadID)
+{
+    if (!Border(id))
+        return;
+    
+    float3 position = YieldPosition(id);
+    
+    E[IdxEx(id)] -= (mul(position, dE[Idx(id)]) + E[Idx(id)]) / length(position) * timestep;
+    B[IdxEx(id)] -= (mul(position, dB[Idx(id)]) + B[Idx(id)]) / length(position) * timestep;
+}
+
+[numthreads(10, 10, 10)]
+void Initialize(uint3 id : SV_DispatchThreadID)
+{
+    float3 position = YieldPosition(id);
+    
+    phi[IdxEx(id)] = 0;
+    psi[IdxEx(id)] = 0;
+    
+    E[IdxEx(id)] = 0;
+    B[IdxEx(id)] = 0;
+    
+    Ja[IdxEx(id)] = 0;
+}
+
+// Add vector field on existing image
+
+float zoom;
+float slice;
+float vectorScale;
+RWTexture2D<float4> Result;
+[numthreads(32, 32, 1)]
+void AddVtField(uint3 id : SV_DispatchThreadID)
+{
+    float3 position = int3(id.xy * 16. - resolution.xy * 2. + 8., slice - resolution.z * .5) / zoom;
+    int3 coords = int3(InverseCoordinateTransform(position));
+    
+    float3 e = E[Idx(coords)];
+    float3 b = B[Idx(coords)];
+    
+    float3 v = CoordinateTransform(10) * .6;
+    if (dot(position, position) >= dot(v, v))
+    {
+        v.x = rsqrt(dot(position, position) / dot(v, v));
+        e *= v.x;
+        b *= v.x;
+    }
+    
+    float dstE = dot(e, e) + .00001;
+    float dstB = dot(b, b) + .00001;
+    
+    for (int i = 0; i < 16; i++)
+        for (int j = 0; j < 16; j++)
+        {
+            float3 vec = float3(i - 7.5, j - 7.5, 0) * .02 / vectorScale;
+            float d1 = distance(e * clamp(dot(e / dstE, vec), 0, 1), vec) * vectorScale;
+            float d2 = distance(b * clamp(dot(b / dstB, vec), 0, 1), vec) * vectorScale;
+            Result[id.xy * 16 + int2(i, j)] += float4(d1 < .02 ? 1 : 0, d2 < .02 ? 1 : 0, (d1 < .02 ? 1 : 0) * (d2 < .02 ? 1 : 0), 0);
+        }
+}
+
+// Render slice of domain to image
+
+[numthreads(32, 32, 1)]
+void PrintImage(uint3 id : SV_DispatchThreadID)
+{
+    float3 position = int3(id.xy - resolution.xy * 2., slice - resolution.z * .5) / zoom;
+    int3 coords = int3(InverseCoordinateTransform(position));
+    
+    float3 trueF = B[Idx(coords)] + mul(position - CoordinateTransform(coords), dB[Idx(coords)]);
+    
+    float3 v = CoordinateTransform(10) * .6;
+    if (dot(position, position) >= dot(v, v))
+        trueF *= rsqrt(dot(position, position) / dot(v, v));
+    
+    Result[id.xy] = float4(trueF + .5, 1);
+}
