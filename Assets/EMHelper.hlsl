@@ -30,6 +30,11 @@ static float FirstDerivative(int i, int pos, int resolution)
     return cdelO6[clamp(i + 3, 0, 6) + pos * 7] * (1. - scale * scale);
 }
 
+float LorentzGamma(float3 vel3)
+{
+    return rsqrt(1 - dot(vel3, vel3));
+}
+
 // Faraday Tensor from E^i and B^i
 float4x4 FaradayTensor(float3 E, float3 B)
 {

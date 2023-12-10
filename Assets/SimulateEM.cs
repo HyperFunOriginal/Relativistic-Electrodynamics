@@ -82,7 +82,7 @@ public class SimulateEM : MonoBehaviour
         shader.SetFloat("zoom", Mathf.Pow(10f, zoom));
         shader.SetFloat("vectorScale", Mathf.Pow(10f, vectorScale));
         shader.SetFloat("slice", slice);
-        shader.SetFloat("dampCoeff", .15f);
+        shader.SetFloat("dampCoeff", .035f);
         shader.SetFloat("lengthScale", lengthScale);
         shader.SetFloat("timestep", timestep);
         shader.SetInts("resolution", resolution.x, resolution.y, resolution.z);

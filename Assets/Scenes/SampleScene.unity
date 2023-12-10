@@ -318,8 +318,8 @@ MonoBehaviour:
   lengthScale: 1
   timestep: 0.1
   slice: 100
-  zoom: 0
-  vectorScale: 0
+  zoom: 0.266
+  vectorScale: 1
   recordInterval: 10
   recordCutoff: 0
   shader: {fileID: 7200000, guid: 676dbdc57267876428272960f199bf5b, type: 3}
