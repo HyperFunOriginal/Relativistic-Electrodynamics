@@ -91,7 +91,7 @@ float KreissOliger(RWStructuredBuffer<float> field, int3 position)
         result += field[Idx(position + int3(0, i, 0))] * coeff * scale.y;
         result += field[Idx(position + int3(0, 0, i))] * coeff * scale.z;
     }
-    return result * 0.015625 / lengthScale;
+    return result * 0.015625;
 }
 
 // Kreiss Oliger Dissipation for 3-vector fields
@@ -108,7 +108,7 @@ float3 KreissOliger(RWStructuredBuffer<float3> field, int3 position)
         result += field[Idx(position + int3(0, i, 0))] * coeff * scale.y;
         result += field[Idx(position + int3(0, 0, i))] * coeff * scale.z;
     }
-    return result * 0.015625 / lengthScale;
+    return result * 0.015625;
 }
 
 // Kreiss Oliger Dissipation for 4-vector fields
@@ -125,7 +125,7 @@ float4 KreissOliger(RWStructuredBuffer<float4> field, int3 position)
         result += field[Idx(position + int3(0, i, 0))] * coeff * scale.y;
         result += field[Idx(position + int3(0, 0, i))] * coeff * scale.z;
     }
-    return result * 0.015625 / lengthScale;
+    return result * 0.015625;
 }
 
 // Spatial Divergence of 4-vector, D_i V^i

@@ -22,6 +22,7 @@ public class EMEditor : Editor
             EditorGUILayout.LabelField("Simulation Frame: ", tgt.simulationFrameIndex.ToString());
             EditorGUILayout.LabelField("Rendered Frame: ", tgt.frameIndex.ToString());
             EditorGUILayout.LabelField("Number of Voxels: ", (tgt.elements * 1E-6d).ToString("f3") + " M");
+            EditorGUILayout.LabelField("Domain Size: ", "x: " + (-2f * tgt.CoordinateTransform(0, 0)).ToString("f3") + ", y: " + (-2f * tgt.CoordinateTransform(0, 1)).ToString("f3") + ", z: " + (-2f * tgt.CoordinateTransform(0, 2)).ToString("f3"));
         }
     }
 }

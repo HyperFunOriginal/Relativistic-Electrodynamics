@@ -136,7 +136,7 @@ RWTexture2D<float4> Result;
 [numthreads(32, 32, 1)]
 void AddVtField(uint3 id : SV_DispatchThreadID)
 {
-    float3 position = int3(id.xy * 16. - resolution.xy * 2. + 8., slice - resolution.z * .5) / zoom;
+    float3 position = int3(id.xy * 16. - resolution.xy * 2. + 8., slice - resolution.z * .5) * lengthScale / zoom;
     int3 coords = int3(InverseCoordinateTransform(position));
     
     float3 e = E[Idx(coords)];
@@ -180,7 +180,7 @@ StructuredBuffer<float3x3> derivs;
 [numthreads(32, 32, 1)]
 void PrintImage(uint3 id : SV_DispatchThreadID)
 {
-    float3 position = int3(id.xy - resolution.xy * 2., slice - resolution.z * .5) / zoom;
+    float3 position = int3(id.xy - resolution.xy * 2., slice - resolution.z * .5) * lengthScale / zoom;
     int3 coords = int3(InverseCoordinateTransform(position));
     
     float3 trueF = field[Idx(coords)] + mul(position - CoordinateTransform(coords), derivs[Idx(coords)]);

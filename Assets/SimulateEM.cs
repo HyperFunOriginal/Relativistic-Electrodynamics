@@ -143,6 +143,11 @@ public class SimulateEM : MonoBehaviour
         Graphics.Blit(screen, destination);
     }
 
+    public float CoordinateTransform(float id, int dir)
+    {
+        id = (id + .5f) / resolution[dir] * 2f - 1f;
+        return Mathf.Log((1f + id) / (1f - id)) * .25f * resolution[dir] * lengthScale;
+    }
     void EvolveEM()
     {
         SetConst();

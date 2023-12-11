@@ -319,7 +319,7 @@ MonoBehaviour:
   timestep: 0.15
   slice: 100
   zoom: 0
-  vectorScale: 0.4
+  vectorScale: 0
   renderType: 1
   recordInterval: 10
   recordCutoff: 0
