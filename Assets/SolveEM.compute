@@ -121,10 +121,8 @@ void Initialize(uint3 id : SV_DispatchThreadID)
     phi[IdxEx(id)] = 0;
     psi[IdxEx(id)] = 0;
     
-    // Example EM wave
-    float val = exp(-dot(position + float3(50, 0, 0), position + float3(50, 0, 0)) * .004);
-    E[IdxEx(id)] = float3(0, cos(position.x * .2), -sin(position.x * .2)) * val;
-    B[IdxEx(id)] = float3(0, sin(position.x * .2), cos(position.x * .2)) * val;
+    E[IdxEx(id)] = 0;
+    B[IdxEx(id)] = 0;
     
     Ja[IdxEx(id)] = 0;
 }
@@ -177,14 +175,15 @@ void AddVtField(uint3 id : SV_DispatchThreadID)
 }
 
 // Render slice of domain to image
-
+StructuredBuffer<float3> field;
+StructuredBuffer<float3x3> derivs;
 [numthreads(32, 32, 1)]
 void PrintImage(uint3 id : SV_DispatchThreadID)
 {
     float3 position = int3(id.xy - resolution.xy * 2., slice - resolution.z * .5) / zoom;
     int3 coords = int3(InverseCoordinateTransform(position));
     
-    float3 trueF = B[Idx(coords)] + mul(position - CoordinateTransform(coords), dB[Idx(coords)]);
+    float3 trueF = field[Idx(coords)] + mul(position - CoordinateTransform(coords), derivs[Idx(coords)]);
     
     float3 v = CoordinateTransform(10) * .6;
     if (dot(position, position) >= dot(v, v))

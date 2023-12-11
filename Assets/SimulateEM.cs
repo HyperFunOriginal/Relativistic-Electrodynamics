@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class SimulateEM : MonoBehaviour
 {
+    public enum FieldType
+    {
+        Electric = 0, Magnetic = 1
+    }
+
     [Header("Simulation Parameters")]
     public Vector3Int resolution;
     public float lengthScale;
@@ -15,6 +20,7 @@ public class SimulateEM : MonoBehaviour
     public float zoom;
     [Range(-1f, 1f)]
     public float vectorScale;
+    public FieldType renderType;
     [Header("Recording")]
     [Range(1, 50)]
     public int recordInterval;
@@ -34,15 +40,17 @@ public class SimulateEM : MonoBehaviour
     public int AddVtField => shader.FindKernel("AddVtField");
     public int KrOlDerivs => shader.FindKernel("KrOlDerivs");
 
-    int elements => resolution.x * resolution.y * resolution.z;
+    public int elements => resolution.x * resolution.y * resolution.z;
     Vector3Int dispatchSize => new Vector3Int(Mathf.CeilToInt(resolution.x / 10f), Mathf.CeilToInt(resolution.y / 10f), Mathf.CeilToInt(resolution.z / 10f));
 
     ComputeBuffer E, B, phi, psi, Ja;
     ComputeBuffer dE, dB;
 
     public RenderTexture screen;
-    float simTime;
-    int simulationFrameIndex, frameIndex;
+    [HideInInspector()]
+    public float simTime;
+    [HideInInspector()]
+    public int simulationFrameIndex, frameIndex;
 
     // Start is called before the first frame update
     void Start()
@@ -82,20 +90,29 @@ public class SimulateEM : MonoBehaviour
         shader.SetFloat("zoom", Mathf.Pow(10f, zoom));
         shader.SetFloat("vectorScale", Mathf.Pow(10f, vectorScale));
         shader.SetFloat("slice", slice);
-        shader.SetFloat("dampCoeff", .035f);
+        shader.SetFloat("dampCoeff", .02f);
         shader.SetFloat("lengthScale", lengthScale);
         shader.SetFloat("timestep", timestep);
         shader.SetInts("resolution", resolution.x, resolution.y, resolution.z);
     }
-    void SaveScreen()
+    public void SaveScreen()
     {
         SaveImage.SaveImageToFile(screen, Application.dataPath + "\\Frames\\", "Image_" + frameIndex.ToString());
         frameIndex++;
     }
     void PrintScreen()
     {
-        shader.SetBuffer(PrintImage, "B", B);
-        shader.SetBuffer(PrintImage, "dB", dB);
+        switch (renderType)
+        {
+            case FieldType.Electric:
+                shader.SetBuffer(PrintImage, "field", E);
+                shader.SetBuffer(PrintImage, "derivs", dE);
+                break;
+            case FieldType.Magnetic:
+                shader.SetBuffer(PrintImage, "field", B);
+                shader.SetBuffer(PrintImage, "derivs", dB);
+                break;
+        }
         shader.SetTexture(PrintImage, "Result", screen);
         shader.Dispatch(PrintImage, Mathf.CeilToInt(resolution.x / 8f), Mathf.CeilToInt(resolution.y / 8f), 1);
     }
