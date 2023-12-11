@@ -37,5 +37,3 @@ For rendering, the field and derivative arrays are read with the reverse coordin
 `int recordCutoff`: Number of frames to save to disk. <br /> <br />
 `ComputeShader shader`: Compute shader used for computation and rendering. <br />
 `RenderTexture screen`: Render texture that `shader` renders to. <br /> <br /> <br />
-
-To modify the field rendered to screen, modify the compute buffers used in computing the variable `trueF` in the compute kernel `PrintImage`.
