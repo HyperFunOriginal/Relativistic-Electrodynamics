@@ -316,10 +316,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   resolution: {x: 200, y: 200, z: 200}
   lengthScale: 1
-  timestep: 0.1
+  timestep: 0.15
   slice: 100
   zoom: 0.266
-  vectorScale: 1
+  vectorScale: 0
   recordInterval: 10
   recordCutoff: 0
   shader: {fileID: 7200000, guid: 676dbdc57267876428272960f199bf5b, type: 3}

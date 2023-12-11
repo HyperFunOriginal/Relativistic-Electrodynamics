@@ -64,8 +64,8 @@ void UpdateCrFl(uint3 id : SV_DispatchThreadID)
     // Temporary; Preset 4-current density
     
     float3 position = YieldPosition(id);
-    float dst = CylinderSDF(position, 20., 10.);
-    Ja[IdxEx(id)] = float4(cross(float3(.1, 0, 0), position) * exp(-dst * dst * .5), 0);
+    float dst = CylinderSDF(position, 20., 5.);
+    Ja[IdxEx(id)] = float4(cross(float3(.2, 0, 0), position) * exp(-dst * dst * .5), 0);
 }
 
 // Evolve Field
@@ -121,8 +121,10 @@ void Initialize(uint3 id : SV_DispatchThreadID)
     phi[IdxEx(id)] = 0;
     psi[IdxEx(id)] = 0;
     
-    E[IdxEx(id)] = 0;
-    B[IdxEx(id)] = 0;
+    // Example EM wave
+    float val = exp(-dot(position + float3(50, 0, 0), position + float3(50, 0, 0)) * .004);
+    E[IdxEx(id)] = float3(0, cos(position.x * .2), -sin(position.x * .2)) * val;
+    B[IdxEx(id)] = float3(0, sin(position.x * .2), cos(position.x * .2)) * val;
     
     Ja[IdxEx(id)] = 0;
 }
@@ -157,9 +159,20 @@ void AddVtField(uint3 id : SV_DispatchThreadID)
         for (int j = 0; j < 16; j++)
         {
             float3 vec = float3(i - 7.5, j - 7.5, 0) * .02 / vectorScale;
-            float d1 = distance(e * clamp(dot(e / dstE, vec), 0, 1), vec) * vectorScale;
-            float d2 = distance(b * clamp(dot(b / dstB, vec), 0, 1), vec) * vectorScale;
-            Result[id.xy * 16 + int2(i, j)] += float4(d1 < .02 ? 1 : 0, d2 < .02 ? 1 : 0, (d1 < .02 ? 1 : 0) * (d2 < .02 ? 1 : 0), 0);
+            
+            float s1 = clamp(dot(e / dstE, vec), 0, 1);
+            float s2 = clamp(dot(b / dstB, vec), 0, 1);
+            
+            bool d1 = distance(e * s1, vec) * vectorScale * max(.3, 1. - e.z * vectorScale * max(.5, s1)) < .02; // Hacky method for "perspective"
+            bool d2 = distance(b * s2, vec) * vectorScale * max(.3, 1. - b.z * vectorScale * max(.5, s2)) < .02; // Hacky method for "perspective"
+            
+            if (d1 && d2) // Hacky Z-cull
+            {
+                d1 = e.z >= b.z - .01 / vectorScale;
+                d2 = e.z <= b.z + .01 / vectorScale;
+            }
+            
+            Result[id.xy * 16 + int2(i, j)] += float4(d1 ? 1 : 0, d2 ? 1 : 0, d1 && d2 ? 1 : 0, 0);
         }
 }
 

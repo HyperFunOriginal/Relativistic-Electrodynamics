@@ -195,3 +195,12 @@ float3 Grad(RWStructuredBuffer<float> field, int3 position)
     }
     return result / lengthScale;
 }
+
+float3x3 MatrixInverse(float3x3 mat)
+{
+    // _11 _12 _13
+    // _21 _22 _23
+    // _31 _32 _33
+    
+    return transpose(float3x3(mat._22 * mat._33 - mat._23 * mat._32, mat._21 * mat._33 - mat._23 * mat._31, mat._21 * mat._32 - mat._22 * mat._31, mat._12 * mat._33 - mat._13 * mat._32, mat._11 * mat._33 - mat._31 * mat._13, mat._11 * mat._32 - mat._12 * mat._31, mat._12 * mat._23 - mat._13 * mat._22, mat._11 * mat._23 - mat._21 * mat._13, mat._11 * mat._22 - mat._21 * mat._12)) * float3x3(1, -1, 1, -1, 1, -1, 1, -1, 1) / determinant(mat);
+}
